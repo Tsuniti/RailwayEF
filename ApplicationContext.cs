@@ -71,18 +71,20 @@ public class ApplicationContext : DbContext
     {
         optionsBuilder.UseSqlite("Data Source=RailwayDB.db");
     }
-    public void CreateNewFlight(string departureCityName, string arrivalCityName, DateTime departureTime)
+
+    public async Task CreateNewFlight(string departureCityName, string arrivalCityName, DateTime departureTime)
     {
-        City DepartureCity = Cities.FirstOrDefault(c => c.Name == departureCityName);
-        City ArrivalCity = Cities.FirstOrDefault(c => c.Name == arrivalCityName);
+        City DepartureCity = await Cities.FirstOrDefaultAsync(c => c.Name == departureCityName);
+        City ArrivalCity = await Cities.FirstOrDefaultAsync(c => c.Name == arrivalCityName);
 
         if (DepartureCity == null || ArrivalCity == null)
             throw new ArgumentException("Inaccessible city for flight indicated");
 
-        var NewFlight = new Flight { DepartureCityId = DepartureCity.Id, ArrivalCityId = ArrivalCity.Id, DepartureTime = departureTime };
+        var NewFlight = new Flight
+            { DepartureCityId = DepartureCity.Id, ArrivalCityId = ArrivalCity.Id, DepartureTime = departureTime };
 
-        Add(NewFlight);
-        SaveChanges();
+        await AddAsync(NewFlight);
+        await SaveChangesAsync();
 
 
         // Вычислю расстояние между городами в метрах, умножаю на 1.2, округляю до двух чисел после запятой
@@ -91,11 +93,12 @@ public class ApplicationContext : DbContext
 
         for (int i = 0; i <= 60; ++i)
         {
-            Add(new Ticket { SeatNumber = i, Price = TicketPrice, FlightId =  NewFlightId});
+            await AddAsync(new Ticket { SeatNumber = i, Price = TicketPrice, FlightId = NewFlightId });
         }
-        SaveChanges();
+
+        await SaveChangesAsync();
     }
-    
+
     public City GetCityById(int id)
     {
         return Cities.FirstOrDefault(c => c.Id == id);
@@ -113,14 +116,14 @@ public class ApplicationContext : DbContext
 
     }
 
-    public void BuyTicket (int flightId)
+    public async Task BuyTicket (int flightId)
     {
 
-        if (!Flights.Any(f => f.Id == flightId))
+        if (!await Flights.AnyAsync(f => f.Id == flightId))
         {
             throw new ArgumentException("There is no flight with this ID");
         }
-        var availableTicket = Tickets.FirstOrDefault(t => t.FlightId == flightId && !t.IsPurchased);
+        var availableTicket = await Tickets.FirstOrDefaultAsync(t => t.FlightId == flightId && !t.IsPurchased);
 
         if (availableTicket == null)
         {
@@ -130,7 +133,7 @@ public class ApplicationContext : DbContext
 
         availableTicket.IsPurchased = true;
         Update(availableTicket);
-        SaveChanges();
+        await SaveChangesAsync();
         Console.WriteLine($"Ticket #{availableTicket.Id} purchased successfully");
     }
 }
